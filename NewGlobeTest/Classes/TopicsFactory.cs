@@ -19,7 +19,7 @@
                 int randomDurationIndex = rand.Next(topicDurations.Count);
 
                 string title = topicTitles[randomTitleIndex];
-                //topicTitles.RemoveAt(randomTitleIndex); //Could make it so titles don't repeat themselves if I had a bigger "topicTitles" or a max constraint on the number of topics that can be generated
+                //topicTitles.RemoveAt(randomTitleIndex); //Could make it so titles don't repeat themselves if I had a bigger "topicTitles" data or a max constraint on the number of topics that can be generated
 
                 int duration = topicDurations[randomDurationIndex];
 

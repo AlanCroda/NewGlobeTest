@@ -1,26 +1,31 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace NewGlobeTest.Classes
+﻿namespace NewGlobeTest.Classes
 {
     internal class TracksScheduler
     {
-        // All minutes per day are calculated without the minutes for needed for Lunch and Sharing session.
-        private const int minMinutesPerDay = 360;
-        private const int maxMinutesPerDay = 420;
         private int allTopicsDuration = 0;
         public List<Track> tracks = new List<Track>();
+        public List<Topic> topics = new List<Topic>();
+
+        int currentMinutes = 0;
+        bool shouldCheckForLunch = true;
+
+        private const int minMinutesPerDay = 480;
+        private const int maxMinutesPerDay = 540;
+        private const int maxMinWithoutSpecialTopics = 450;
+        private const int minutesTillLunch = 180;
+        private const int minutesTillShareSession = 480;
+
+        private Random rand = new Random();
 
         public TracksScheduler(List<Topic> topics) {
+            this.topics = topics;
             foreach (var topic in topics)
             {
                 allTopicsDuration += topic._duration;
             }
 
-            float numOfTracks = allTopicsDuration / maxMinutesPerDay;
+            double numOfTracks = (double)allTopicsDuration / maxMinWithoutSpecialTopics;
+            numOfTracks = Math.Ceiling(numOfTracks);
 
             for (int i = 0; i < numOfTracks; i++)
             {
@@ -31,27 +36,65 @@ namespace NewGlobeTest.Classes
         private Track ScheduleTrack(List<Topic> topics)
         {
             Track track = new Track();
-            int currentMinutes = 0;
+            currentMinutes = 0;
+            shouldCheckForLunch = true;
 
             track.topicList.Add(AddLunchBreak());
 
-            foreach (var topic in topics)
+            while (currentMinutes < maxMinutesPerDay && topics.Count > 0)
             {
-                // Fill track while no precision is needed
-                while (currentMinutes < minMinutesPerDay) {
-                    track.topicList.Add(topic);
-                    topics.Remove(topic);
-                    currentMinutes += topic._duration;
-                }
-
-                // Now we need precision to insert Topics into Track
-                // TODO: HOW TO INSERT EFFICIENTLY
-                while (currentMinutes < maxMinutesPerDay)
+                if(topics.Count == 0)
                 {
-
+                    track.topicList.Add(AddSharingSession(track));
+                    return track;
                 }
 
-                return track;
+                if(currentMinutes >= 180 && shouldCheckForLunch)
+                {
+                    // Skip Lunchtime for scheduling since it's already scheduled
+                    currentMinutes += 60;
+                    shouldCheckForLunch = false;
+                }
+
+                // As long as there is space for it, check if need to insert topics before lunch
+                if(currentMinutes + 5 <= minutesTillLunch) // HANDLE PRECISE TOPIC INSERTION WHEN APPROACHING LUNCH
+                {
+                    if (currentMinutes + 60 > minutesTillLunch && currentMinutes + 30 <= minutesTillLunch)
+                    {
+                        track.topicList.Add(InsertLessThanMins(60));
+                    }
+                    else if (currentMinutes + 30 > minutesTillLunch && currentMinutes + 15 <= minutesTillLunch)
+                    {
+                        track.topicList.Add(InsertLessThanMins(30));
+                    }
+                    else if (currentMinutes + 15 > minutesTillLunch && currentMinutes + 5 <= minutesTillLunch)
+                    {
+                        track.topicList.Add(InsertLessThanMins(15));
+                    } else
+                    {
+                        // Normal insertion
+                        track.topicList.Add(InsertTopic());
+                    }
+                } else // HANDLE PRECISE TOPIC INSERTION WHEN APPROACHING SHARING SESSION
+                {
+                    if (currentMinutes + 60 > minutesTillShareSession && currentMinutes + 30 <= minutesTillShareSession)
+                    {
+                        track.topicList.Add(InsertLessThanMins(60));
+                    }
+                    else if (currentMinutes + 30 > minutesTillShareSession && currentMinutes + 15 <= minutesTillShareSession)
+                    {
+                        track.topicList.Add(InsertLessThanMins(30));
+                    }
+                    else if (currentMinutes + 15 > minutesTillShareSession && currentMinutes + 5 <= minutesTillShareSession)
+                    {
+                        track.topicList.Add(InsertLessThanMins(15));
+                    }
+                    else
+                    {
+                        // Normal insertion
+                        track.topicList.Add(InsertTopic());
+                    }
+                }
             }
 
             track.topicList.Add(AddSharingSession(track));
@@ -76,9 +119,52 @@ namespace NewGlobeTest.Classes
             //if (sharingSessionStart < lastActivityEndTime)
             //    sharingSessionStart = lastActivityEndTime;
 
-            Topic sharingSession = new Topic("Sharing Session", 30, lastActivityEndTime);
+            // Check that last activity isn't lunch, otherwise add sharing session after lunch
+            if (lastActivityEndTime.Hour != 12)
+            {
+                Topic sharingSession = new Topic("Sharing Session", 30, lastActivityEndTime);
+                return sharingSession;
+            }
+            else
+            {
+                lastActivityEndTime = lastActivityEndTime.AddMinutes(60);
+                Topic sharingSession = new Topic("Sharing Session", 30, lastActivityEndTime);
+                return sharingSession;
+            }
+        }
 
-            return sharingSession;
+        private Topic InsertTopic()
+        {
+            Topic topic = topics[rand.Next(topics.Count)];
+            
+            topic._startTime = new(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 9, 0, 0);
+            topic._startTime = topic._startTime.Value.AddMinutes(currentMinutes);
+
+            //Increase currentMinutes by topic duration
+            currentMinutes += topic._duration;
+
+            //Remove topic from the list of Topics since it's scheduled
+            topics.Remove(topic);
+
+            return topic;
+        }
+
+        private Topic InsertLessThanMins(int x) // TODO: Handle when we no longer have topics that are less than 60mins
+        {
+            // Insert only less than x mins Topics to not collide with Lunch session
+            var customTopics = (from item in topics where item._duration < x select item).ToList();
+            Topic topic = customTopics[rand.Next(customTopics.Count)];
+
+            topic._startTime = new(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 9, 0, 0);
+            topic._startTime = topic._startTime.Value.AddMinutes(currentMinutes);
+
+            //Increase currentMinutes by topic duration
+            currentMinutes += topic._duration;
+
+            //Remove topic from the list of Topics since it's scheduled
+            topics.Remove(topic);
+
+            return topic;
         }
     }
 }
