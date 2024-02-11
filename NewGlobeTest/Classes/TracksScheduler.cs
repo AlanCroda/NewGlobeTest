@@ -8,10 +8,11 @@
 
         int currentMinutes = 0;
         bool shouldCheckForLunch = true;
+        bool shouldCheckForSharingSession = true;
 
         private const int minMinutesPerDay = 480;
         private const int maxMinutesPerDay = 540;
-        private const int maxMinWithoutSpecialTopics = 450;
+        private const int maxMinutesWithoutSpecialTopics = 450;
         private const int minutesTillLunch = 180;
         private const int minutesTillShareSession = 480;
 
@@ -24,10 +25,10 @@
                 allTopicsDuration += topic._duration;
             }
 
-            double numOfTracks = (double)allTopicsDuration / maxMinWithoutSpecialTopics;
-            numOfTracks = Math.Ceiling(numOfTracks);
+            //double numOfTracks = (double)allTopicsDuration / maxMinutesWithoutSpecialTopics;
+            //numOfTracks = Math.Ceiling(numOfTracks);
 
-            for (int i = 0; i < numOfTracks; i++)
+            while (topics.Count > 0)
             {
                 tracks.Add(ScheduleTrack(topics));
             }
@@ -38,6 +39,7 @@
             Track track = new Track();
             currentMinutes = 0;
             shouldCheckForLunch = true;
+            shouldCheckForSharingSession = true;
 
             track.topicList.Add(AddLunchBreak());
 
@@ -61,15 +63,37 @@
                 {
                     if (currentMinutes + 60 > minutesTillLunch && currentMinutes + 30 <= minutesTillLunch)
                     {
-                        track.topicList.Add(InsertLessThanMins(60));
+                        if((from item in topics where item._duration < 60 select item).ToList().Count > 0)
+                        {
+                            track.topicList.Add(InsertLessThanMins(60));
+                        } else
+                        {
+                            currentMinutes = minutesTillLunch + 60;
+                            shouldCheckForLunch = false;
+                        }
                     }
                     else if (currentMinutes + 30 > minutesTillLunch && currentMinutes + 15 <= minutesTillLunch)
                     {
-                        track.topicList.Add(InsertLessThanMins(30));
+                        if((from item in topics where item._duration < 30 select item).ToList().Count > 0)
+                        {
+                            track.topicList.Add(InsertLessThanMins(30));
+                        } else
+                        {
+                            currentMinutes = minutesTillLunch + 60;
+                            shouldCheckForLunch = false;
+                        }
                     }
                     else if (currentMinutes + 15 > minutesTillLunch && currentMinutes + 5 <= minutesTillLunch)
                     {
-                        track.topicList.Add(InsertLessThanMins(15));
+                        if ((from item in topics where item._duration < 15 select item).ToList().Count > 0)
+                        {
+                            track.topicList.Add(InsertLessThanMins(15));
+                        }
+                        else
+                        {
+                            currentMinutes = minutesTillLunch + 60;
+                            shouldCheckForLunch = false;
+                        }
                     } else
                     {
                         // Normal insertion
@@ -77,17 +101,27 @@
                     }
                 } else // HANDLE PRECISE TOPIC INSERTION WHEN APPROACHING SHARING SESSION
                 {
+                    // TODO: Check insertion going over 5:00pm and inserting at the same time as sharing session
                     if (currentMinutes + 60 > minutesTillShareSession && currentMinutes + 30 <= minutesTillShareSession)
                     {
-                        track.topicList.Add(InsertLessThanMins(60));
+                        if ((from item in topics where item._duration < 60 select item).ToList().Count > 0)
+                        {
+                            track.topicList.Add(InsertLessThanMins(60));
+                        }
                     }
                     else if (currentMinutes + 30 > minutesTillShareSession && currentMinutes + 15 <= minutesTillShareSession)
                     {
-                        track.topicList.Add(InsertLessThanMins(30));
+                        if ((from item in topics where item._duration < 30 select item).ToList().Count > 0)
+                        {
+                            track.topicList.Add(InsertLessThanMins(30));
+                        }
                     }
                     else if (currentMinutes + 15 > minutesTillShareSession && currentMinutes + 5 <= minutesTillShareSession)
                     {
-                        track.topicList.Add(InsertLessThanMins(15));
+                        if ((from item in topics where item._duration < 15 select item).ToList().Count > 0)
+                        {
+                            track.topicList.Add(InsertLessThanMins(15));
+                        }
                     }
                     else
                     {
@@ -149,7 +183,7 @@
             return topic;
         }
 
-        private Topic InsertLessThanMins(int x) // TODO: Handle when we no longer have topics that are less than 60mins
+        private Topic InsertLessThanMins(int x)
         {
             // Insert only less than x mins Topics to not collide with Lunch session
             var customTopics = (from item in topics where item._duration < x select item).ToList();
