@@ -10,9 +10,9 @@
         bool shouldCheckForLunch = true;
         bool shouldCheckForSharingSession = true;
 
-        private const int minMinutesPerDay = 480;
-        private const int maxMinutesPerDay = 540;
-        private const int maxMinutesWithoutSpecialTopics = 450;
+        //private const int minMinutesPerDay = 480;
+        //private const int maxMinutesPerDay = 510;
+        //private const int maxMinutesWithoutSpecialTopics = 450;
         private const int minutesTillLunch = 180;
         private const int minutesTillShareSession = 480;
 
@@ -43,7 +43,7 @@
 
             track.topicList.Add(AddLunchBreak());
 
-            while (currentMinutes < maxMinutesPerDay && topics.Count > 0)
+            while (currentMinutes < minutesTillShareSession && topics.Count > 0)
             {
                 if(topics.Count == 0)
                 {
@@ -101,7 +101,6 @@
                     }
                 } else // HANDLE PRECISE TOPIC INSERTION WHEN APPROACHING SHARING SESSION
                 {
-                    // TODO: Check insertion going over 5:00pm and inserting at the same time as sharing session
                     if (currentMinutes + 60 > minutesTillShareSession && currentMinutes + 30 <= minutesTillShareSession)
                     {
                         if ((from item in topics where item._duration < 60 select item).ToList().Count > 0)
@@ -125,8 +124,11 @@
                     }
                     else
                     {
-                        // Normal insertion
-                        track.topicList.Add(InsertTopic());
+                        if(currentMinutes < 480)
+                        {
+                            // Normal insertion
+                            track.topicList.Add(InsertTopic());
+                        }
                     }
                 }
             }
@@ -146,7 +148,7 @@
         static Topic AddSharingSession(Track track)
         {
             // Find the end time of the last activity before the Sharing Session
-            DateTime lastActivityEndTime = track.topicList.Max(t => t._startTime.Value);
+            Topic lastTopicInTrack = track.topicList.MaxBy(t => t._startTime);
 
             //// Ensure Sharing Session starts after the end of the last activity
             //DateTime sharingSessionStart = lastActivityEndTime.Date.AddHours(16); // 4 PM
@@ -154,15 +156,15 @@
             //    sharingSessionStart = lastActivityEndTime;
 
             // Check that last activity isn't lunch, otherwise add sharing session after lunch
-            if (lastActivityEndTime.Hour != 12)
+            if (lastTopicInTrack._startTime.Value.Hour != 12)
             {
-                Topic sharingSession = new Topic("Sharing Session", 30, lastActivityEndTime);
+                Topic sharingSession = new Topic("Sharing Session", 30, (DateTime)lastTopicInTrack._startTime.Value.AddMinutes(lastTopicInTrack._duration));
                 return sharingSession;
             }
             else
             {
-                lastActivityEndTime = lastActivityEndTime.AddMinutes(60);
-                Topic sharingSession = new Topic("Sharing Session", 30, lastActivityEndTime);
+                //lastTopicInTrack = lastTopicInTrack._startTime.Value.AddMinutes(60);
+                Topic sharingSession = new Topic("Sharing Session", 30, (DateTime)lastTopicInTrack._startTime.Value.AddMinutes(lastTopicInTrack._duration));
                 return sharingSession;
             }
         }
