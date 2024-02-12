@@ -2,17 +2,12 @@
 {
     internal class TracksScheduler
     {
-        private int allTopicsDuration = 0;
         public List<Track> tracks = new List<Track>();
         public List<Topic> topics = new List<Topic>();
 
         int currentMinutes = 0;
         bool shouldCheckForLunch = true;
-        bool shouldCheckForSharingSession = true;
 
-        //private const int minMinutesPerDay = 480;
-        //private const int maxMinutesPerDay = 510;
-        //private const int maxMinutesWithoutSpecialTopics = 450;
         private const int minutesTillLunch = 180;
         private const int minutesTillShareSession = 480;
 
@@ -20,13 +15,6 @@
 
         public TracksScheduler(List<Topic> topics) {
             this.topics = topics;
-            foreach (var topic in topics)
-            {
-                allTopicsDuration += topic._duration;
-            }
-
-            //double numOfTracks = (double)allTopicsDuration / maxMinutesWithoutSpecialTopics;
-            //numOfTracks = Math.Ceiling(numOfTracks);
 
             while (topics.Count > 0)
             {
@@ -39,7 +27,6 @@
             Track track = new Track();
             currentMinutes = 0;
             shouldCheckForLunch = true;
-            shouldCheckForSharingSession = true;
 
             track.topicList.Add(AddLunchBreak());
 
@@ -61,7 +48,7 @@
                 // As long as there is space for it, check if need to insert topics before lunch
                 if(currentMinutes + 5 <= minutesTillLunch) // HANDLE PRECISE TOPIC INSERTION WHEN APPROACHING LUNCH
                 {
-                    if (currentMinutes + 60 > minutesTillLunch && currentMinutes + 30 <= minutesTillLunch)
+                    if (currentMinutes + 60 > minutesTillLunch && currentMinutes + 45 <= minutesTillLunch)
                     {
                         if((from item in topics where item._duration < 60 select item).ToList().Count > 0)
                         {
@@ -72,18 +59,29 @@
                             shouldCheckForLunch = false;
                         }
                     }
-                    else if (currentMinutes + 30 > minutesTillLunch && currentMinutes + 15 <= minutesTillLunch)
+                    else if (currentMinutes + 45 > minutesTillLunch && currentMinutes + 30 <= minutesTillLunch)
                     {
-                        if((from item in topics where item._duration < 30 select item).ToList().Count > 0)
+                        if((from item in topics where item._duration < 45 select item).ToList().Count > 0)
                         {
-                            track.topicList.Add(InsertLessThanMins(30));
+                            track.topicList.Add(InsertLessThanMins(45));
                         } else
                         {
                             currentMinutes = minutesTillLunch + 60;
                             shouldCheckForLunch = false;
                         }
                     }
-                    else if (currentMinutes + 15 > minutesTillLunch && currentMinutes + 5 <= minutesTillLunch)
+                    else if (currentMinutes + 30 > minutesTillLunch && currentMinutes + 15 <= minutesTillLunch)
+                    {
+                        if ((from item in topics where item._duration < 30 select item).ToList().Count > 0)
+                        {
+                            track.topicList.Add(InsertLessThanMins(30));
+                        }
+                        else
+                        {
+                            currentMinutes = minutesTillLunch + 60;
+                            shouldCheckForLunch = false;
+                        }
+                    } else if (currentMinutes + 15 > minutesTillLunch && currentMinutes + 5 <= minutesTillLunch)
                     {
                         if ((from item in topics where item._duration < 15 select item).ToList().Count > 0)
                         {
@@ -101,11 +99,24 @@
                     }
                 } else // HANDLE PRECISE TOPIC INSERTION WHEN APPROACHING SHARING SESSION
                 {
-                    if (currentMinutes + 60 > minutesTillShareSession && currentMinutes + 30 <= minutesTillShareSession)
+                    if (currentMinutes + 60 > minutesTillShareSession && currentMinutes + 45 <= minutesTillShareSession)
                     {
                         if ((from item in topics where item._duration < 60 select item).ToList().Count > 0)
                         {
                             track.topicList.Add(InsertLessThanMins(60));
+                        } else
+                        {
+                            currentMinutes += 30;
+                        }
+                    } else if (currentMinutes + 45 > minutesTillShareSession && currentMinutes + 30 <= minutesTillShareSession)
+                    {
+                        if ((from item in topics where item._duration < 45 select item).ToList().Count > 0)
+                        {
+                            track.topicList.Add(InsertLessThanMins(45));
+                        }
+                        else
+                        {
+                            currentMinutes += 45;
                         }
                     }
                     else if (currentMinutes + 30 > minutesTillShareSession && currentMinutes + 15 <= minutesTillShareSession)
@@ -113,6 +124,9 @@
                         if ((from item in topics where item._duration < 30 select item).ToList().Count > 0)
                         {
                             track.topicList.Add(InsertLessThanMins(30));
+                        } else
+                        {
+                            currentMinutes += 15;
                         }
                     }
                     else if (currentMinutes + 15 > minutesTillShareSession && currentMinutes + 5 <= minutesTillShareSession)
@@ -120,6 +134,9 @@
                         if ((from item in topics where item._duration < 15 select item).ToList().Count > 0)
                         {
                             track.topicList.Add(InsertLessThanMins(15));
+                        } else
+                        {
+                            currentMinutes += 5;
                         }
                     }
                     else
@@ -135,6 +152,10 @@
 
             track.topicList.Add(AddSharingSession(track));
 
+            // My solution involves adding Lunch as first item in the track, which makes it so that I need to sort the track once it's full, which is a bit inefficient.
+            // Could improve this in the future.
+            track.topicList = track.topicList.OrderBy(x => x._startTime).ToList();
+
             return track;
         }
 
@@ -149,11 +170,6 @@
         {
             // Find the end time of the last activity before the Sharing Session
             Topic lastTopicInTrack = track.topicList.MaxBy(t => t._startTime);
-
-            //// Ensure Sharing Session starts after the end of the last activity
-            //DateTime sharingSessionStart = lastActivityEndTime.Date.AddHours(16); // 4 PM
-            //if (sharingSessionStart < lastActivityEndTime)
-            //    sharingSessionStart = lastActivityEndTime;
 
             // Check that last activity isn't lunch, otherwise add sharing session after lunch
             if (lastTopicInTrack._startTime.Value.Hour != 12)
