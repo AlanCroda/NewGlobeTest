@@ -28,7 +28,13 @@ class Program
                 Console.WriteLine($"Track {i + 1}:");
                 foreach (var topic in ts.tracks[i].topicList)
                 {
-                    Console.WriteLine($"{topic._startTime.Value.ToString("HH:mm")} | {topic._title} | {topic._duration}min");
+                    if(topic._duration == 5)
+                    {
+                        Console.WriteLine($"{topic._startTime.Value.ToString("HH:mm")} | {topic._title} | lightning");
+                    } else
+                    {
+                        Console.WriteLine($"{topic._startTime.Value.ToString("HH:mm")} | {topic._title} | {topic._duration}min");
+                    }
                 }
                 Console.WriteLine();
             }
