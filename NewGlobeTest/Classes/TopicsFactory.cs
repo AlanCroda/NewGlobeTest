@@ -2,7 +2,33 @@
 {
     internal class TopicsFactory
     {
-        private List<string> topicTitles = ["Teaching Techniques", "Policy Updates", "Tech Innovations", "Effective Communication", "Team Collaboration"];
+        private List<string> topicTitles = [
+            "Teaching Techniques", 
+            "Policy Updates", 
+            "Tech Innovations", 
+            "Effective Communication", 
+            "Team Collaboration", 
+            "Organising Parents for Academy Improvements",
+            "Teaching Innovations in the Pipeline",
+            "Teacher Computer Hacks",
+            "Making Your Academy Beautiful",
+            "Academy Tech Field Repair",
+            "Sync Hard",
+            "Unusual Recruiting",
+            "Parent Teacher Conferences",
+            "Managing Your Dire Allowance",
+            "Customer Care",
+            "AIMs – 'Managing Up'",
+            "Dealing with Problem Teachers",
+            "Hiring the Right Cook",
+            "Government Policy Changes and New Globe",
+            "Adjusting to Relocation",
+            "Public Works in Your Community",
+            "Talking To Parents About Billing",
+            "So They Say You're a Devil Worshipper",
+            "Two-Streams or Not Two-Streams",
+            "Piped Water"
+            ];
         private List<int> topicDurations = [30, 45, 60, 5]; // in minutes
         public List<Topic> topics = new List<Topic>();
 
